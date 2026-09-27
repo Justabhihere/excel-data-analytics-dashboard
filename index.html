@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="BITS Digital CodeForge V1.0 - Modern Grading Console">
+<title>BITS Digital • Grading Console</title>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+<link rel="stylesheet" href="styles.css">
+
+</head>
+
+<body>
+<div class="container">
+
+  <div class="topbar">
+    <div class="brand">
+      <div class="brand-mark">BD</div>
+      <div>
+        <h1>BITS Pilani Digital</h1>
+        <p>Advanced Grading Console • CodeForge V1.0</p>
+      </div>
+    </div>
+    <div class="top-actions">
+      <button class="btn btn-secondary btn-small" id="logBtn">📋 Bug Fix Log</button>
+      <button class="btn btn-ghost btn-small" id="resetAppBtn">Reset App</button>
+    </div>
+  </div>
+
+  <section class="hero">
+    <div class="hero-content">
+      <div class="eyebrow">Instructor workspace</div>
+      <h2>Review marks. Validate ranges. Finalize grades.</h2>
+      <p>A safer, cleaner grading workflow with instant analytics, validation, search, responsive design and CSV export. Your uploaded data stays in this browser session.</p>
+    </div>
+  </section>
+
+  <section class="card setup">
+    <div class="section-title">
+      <div>
+        <h3>1. Set up grading</h3>
+        <p>Enter the instructor name, upload the marks workbook and select a course.</p>
+      </div>
+      <span class="badge" id="datasetBadge">No dataset loaded</span>
+    </div>
+
+    <div class="setup-grid">
+      <div class="field">
+        <label for="instructor">Instructor name *</label>
+        <input class="input" id="instructor" placeholder="e.g. Prof. ABC" autocomplete="name">
+      </div>
+
+      <div class="field">
+        <label>Marks workbook *</label>
+        <div class="dropzone" id="dropzone">
+          <div class="file-meta">
+            <div class="file-name" id="fileName">No file selected</div>
+            <div class="file-hint">.xlsx / .xls • BITS ID, Course, Total Marks</div>
+          </div>
+          <div class="file-actions">
+            <label class="btn btn-secondary btn-small file-btn">
+              Choose file
+              <input type="file" id="file" accept=".xlsx,.xls">
+            </label>
+            <button class="btn btn-ghost btn-small" type="button" id="demoBtn">Try demo data</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="course">Course *</label>
+        <select class="select" id="course">
+          <option value="">Upload a workbook to populate courses</option>
+        </select>
+        <div class="field-help" id="courseHelp">Course options appear automatically after a valid Excel file is loaded.</div>
+      </div>
+    </div>
+
+    <details class="guidance">
+      <summary>📄 Marks file format guidance</summary>
+      <div class="guidance-body">
+        <div class="tip"><strong>Required columns:</strong> exactly BITS ID, Course and Total Marks. Column names are matched safely even if capitalization/extra spaces differ.</div>
+        <div class="tip"><strong>Marks:</strong> expected on a 0–100 scale. Whole-number marks are used for grading. Invalid, blank or out-of-range marks are rejected with a clear message.</div>
+        <div class="tip"><strong>NC students:</strong> students who did not appear and should receive NC should not be included in the uploaded file.</div>
+        <div class="tip"><strong>Privacy:</strong> processing happens locally in your browser; the app does not send your workbook to a server.</div>
+      </div>
+    </details>
+
+    <div class="status" id="status"></div>
+  </section>
+
+  <main class="workspace">
+    <div class="left-stack">
+      <section class="card analytics">
+        <div class="analytics-head">
+          <div>
+            <h3>Course analytics</h3>
+            <p id="analyticsSubtitle">Upload a workbook and select a course to begin.</p>
+          </div>
+          <span class="badge" id="timerBadge">⏱ 00:00</span>
+        </div>
+
+        <div class="kpis">
+          <div class="kpi"><div class="label">Students</div><div class="value" id="studentsKpi">—</div></div>
+          <div class="kpi"><div class="label">Average</div><div class="value" id="avgKpi">—</div></div>
+          <div class="kpi"><div class="label">Median</div><div class="value" id="medianKpi">—</div></div>
+          <div class="kpi"><div class="label">Highest</div><div class="value" id="maxKpi">—</div></div>
+          <div class="kpi"><div class="label">Pass rate</div><div class="value" id="passKpi">—</div></div>
+        </div>
+
+        <div class="chart-wrap">
+          <canvas id="hist" width="900" height="255" aria-label="Marks distribution chart"></canvas>
+          <div class="chart-legend">
+            <span class="legend"><span class="dot"></span> Marks distribution</span>
+            <span class="legend">Buckets: 0–9, 10–19 … 90–100</span>
+          </div>
+        </div>
+
+        <div class="grade-summary" id="gradeSummary"></div>
+      </section>
+
+      <section class="card students">
+        <div class="table-tools">
+          <div>
+            <h3>Student preview</h3>
+            <div class="muted" style="font-size:10px;margin-top:3px">Search by BITS ID, course or grade.</div>
+          </div>
+          <input class="input search" id="studentSearch" placeholder="Search all students…" aria-label="Search students" disabled>
+        </div>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>BITS ID</th><th>Course</th><th>Marks</th><th>Grade</th></tr></thead>
+            <tbody id="studentBody">
+              <tr><td colspan="4"><div class="empty">No course selected.</div></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+
+    <div class="right-stack">
+      <section class="card config">
+        <div class="section-title">
+          <div>
+            <h3>2. Configure grade ranges</h3>
+            <p>Ranges must cover 0–100 continuously with no gaps or overlaps.</p>
+          </div>
+          <span class="badge" id="rangeBadge">Default ranges</span>
+        </div>
+
+        <div class="grade-grid" id="grades"></div>
+        <div class="validation bad hidden" id="rangeError"></div>
+        <div class="validation ok" id="rangeOk">✓ Default grade ranges are valid.</div>
+
+        <div class="actions">
+          <button class="btn btn-secondary" id="resetRanges">↺ Reset ranges</button>
+          <button class="btn btn-primary" id="download" disabled>✓ Finalize & Download CSV</button>
+        </div>
+        <div class="helper">
+          Finalizing validates the instructor, dataset, course, marks and grade ranges again before generating the CSV. Repeated finalization is allowed; the timer records the current grading session.
+        </div>
+      </section>
+
+      <section class="card enhancements">
+        <div class="section-title">
+          <div>
+            <h3>Built-in product improvements</h3>
+            <p>Meaningful enhancements added for the CodeForge challenge.</p>
+          </div>
+        </div>
+        <div class="enhancement-grid">
+          <div class="enhancement"><div class="icon">🛡️</div><h4>Safer validation</h4><p>Detects wrong columns, blank values, invalid marks, duplicate BITS IDs and broken grade ranges before finalization.</p></div>
+          <div class="enhancement"><div class="icon">📊</div><h4>Actionable analytics</h4><p>Shows student count, average, median, highest mark, pass rate, grade distribution and an interactive-looking distribution chart.</p></div>
+          <div class="enhancement"><div class="icon">🔎</div><h4>Fast student review</h4><p>Search and preview the selected course before export, making it easier to catch unexpected grades.</p></div>
+          <div class="enhancement"><div class="icon">📱</div><h4>Responsive UI</h4><p>The workspace adapts to smaller screens while preserving the core grading workflow.</p></div>
+          <div class="enhancement"><div class="icon">📥</div><h4>Safer export</h4><p>CSV fields are escaped correctly, filenames include the course, and only validated records are exported.</p></div>
+          <div class="enhancement"><div class="icon">💾</div><h4>Local-first processing</h4><p>The workbook is processed in-browser. No backend or account is required for the grading workflow.</p></div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <span>BITS Digital CodeForge V1.0 • Prototype for the coding challenge, not an official academic grading system.</span>
+    <span><a href="#" id="submissionBtn">Submission notes & bug log</a></span>
+  </footer>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<div class="modal-backdrop" id="modalBackdrop">
+  <div class="modal">
+    <div class="modal-head">
+      <div>
+        <h3>CodeForge Bug Fix Log</h3>
+        <div class="muted" style="font-size:11px;margin-top:3px">Use this structure for your challenge submission. Update wording if your own testing reveals additional issues.</div>
+      </div>
+      <button class="btn btn-secondary btn-small" id="closeModal">Close</button>
+    </div>
+    <div class="modal-body">
+      <div class="log-wrap">
+        <table class="log-table">
+          <thead><tr><th>#</th><th>Bug / Issue Identified</th><th>How Reproduced</th><th>Root Cause</th><th>Fix Implemented</th><th>How Tested</th></tr></thead>
+          <tbody>
+            <tr><td>1</td><td>Course list could retain duplicate/stale options after another upload.</td><td>Uploaded two workbooks sequentially.</td><td>Existing course options were not cleared before new options were appended.</td><td>Course selector is rebuilt from the latest validated dataset and duplicates are removed.</td><td>Uploaded multiple files and verified the selector contains only unique courses from the latest workbook.</td></tr>
+            <tr><td>2</td><td>Statistics could become NaN/undefined when a course had no records.</td><td>Selected a course with no usable records.</td><td>Calculations assumed at least one mark existed.</td><td>Empty datasets now show safe empty-state values and do not divide by zero.</td><td>Tested empty and invalid-course states.</td></tr>
+            <tr><td>3</td><td>Uploaded file validation was too weak.</td><td>Uploaded a workbook with missing columns, blank marks or out-of-range marks.</td><td>The original flow directly consumed sheet JSON without schema/data validation.</td><td>Added schema validation, mark validation, duplicate BITS ID checks and clear error messages.</td><td>Tested missing columns, blanks, negative marks, marks above 100 and duplicate IDs.</td></tr>
+            <tr><td>4</td><td>File picker only advertised .xls although the challenge specifies .xlsx.</td><td>Attempted to select a .xlsx workbook.</td><td>The original input used accept=".xls".</td><td>File input now accepts .xlsx and .xls and validates the workbook extension.</td><td>Tested both supported Excel extensions.</td></tr>
+            <tr><td>5</td><td>Grade validation did not explicitly guarantee complete 0–100 coverage.</td><td>Changed edge ranges to create invalid coverage.</td><td>Original validation focused on local continuity but did not enforce global 0 and 100 boundaries.</td><td>Validation now requires the first range to end at 100, the final range to start at 0, and all adjacent bands to be continuous.</td><td>Tested gaps, overlaps, reversed ranges and invalid edge boundaries.</td></tr>
+            <tr><td>6</td><td>CSV export could break when instructor/course values contained commas or quotes.</td><td>Used text containing punctuation and exported.</td><td>CSV fields were concatenated without CSV escaping.</td><td>Added RFC-style CSV escaping for exported fields and a course-specific filename.</td><td>Exported values containing commas, quotes and line breaks and reopened the CSV.</td></tr>
+            <tr><td>7</td><td>Analytics labels for minimum/maximum were reversed in the original UI.</td><td>Compared displayed KPI labels with the computed values.</td><td>The original markup displayed the max variable under “Min” and vice versa.</td><td>Rebuilt KPI cards with correct labels and added students/pass-rate metrics.</td><td>Verified the displayed values against the source marks.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+        <button class="btn btn-primary btn-small" id="downloadLog">Download Bug Fix Log CSV</button>
+        <button class="btn btn-secondary btn-small" id="copySummary">Copy enhancement summary</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="script.js"></script>
+
+</body>
+</html>
